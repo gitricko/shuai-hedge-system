@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  macOS launchd daily automation for Meridian Capital Partners.
+
+  Install:
+    1. Edit this file:
+       - Replace REPO_PATH with your absolute repo path
+       - Replace PYTHON_PATH with your venv python (typically REPO_PATH/.venv/bin/python)
+    2. Copy to ~/Library/LaunchAgents/com.user.hedgefund.daily.plist
+    3. Load:   launchctl load ~/Library/LaunchAgents/com.user.hedgefund.daily.plist
+    4. Unload: launchctl unload ~/Library/LaunchAgents/com.user.hedgefund.daily.plist
+
+  Fires weekdays at 17:15 local time. Runs incremental data refresh + scoring.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.user.hedgefund.daily</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-lc</string>
+        <string>cd "REPO_PATH" &amp;&amp; PYTHON_PATH run_data.py --no-filings --no-13f &amp;&amp; PYTHON_PATH run_scoring.py</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict>
+            <key>Weekday</key><integer>1</integer>
+            <key>Hour</key><integer>17</integer>
+            <key>Minute</key><integer>15</integer>
+        </dict>
+        <dict>
+            <key>Weekday</key><integer>2</integer>
+            <key>Hour</key><integer>17</integer>
+            <key>Minute</key><integer>15</integer>
+        </dict>
+        <dict>
+            <key>Weekday</key><integer>3</integer>
+            <key>Hour</key><integer>17</integer>
+            <key>Minute</key><integer>15</integer>
+        </dict>
+        <dict>
+            <key>Weekday</key><integer>4</integer>
+            <key>Hour</key><integer>17</integer>
+            <key>Minute</key><integer>15</integer>
+        </dict>
+        <dict>
+            <key>Weekday</key><integer>5</integer>
+            <key>Hour</key><integer>17</integer>
+            <key>Minute</key><integer>15</integer>
+        </dict>
+    </array>
+
+    <key>StandardOutPath</key>
+    <string>REPO_PATH/output/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>REPO_PATH/output/launchd.err.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>

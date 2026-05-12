@@ -1,0 +1,171 @@
+# Meridian Capital Partners - Configuration
+fund:
+  name: "Meridian Capital Partners"
+  domicile: "Delaware"
+  inception: "2026-01-01"
+
+universe:
+  source: "wikipedia_sp500"
+  refresh_days: 7
+  benchmarks:
+    - SPY
+    - QQQ
+    - IWM
+    - DIA
+  sector_etfs:
+    - XLK
+    - XLF
+    - XLV
+    - XLE
+    - XLI
+    - XLC
+    - XLY
+    - XLP
+    - XLB
+    - XLRE
+    - XLU
+  macro:
+    - "^VIX"
+    - TLT
+    - HYG
+
+market_data:
+  lookback_years: 3
+  source_default: yfinance
+
+sec:
+  user_agent_email: "research@meridiancap.example"
+  rate_limit_per_sec: 8
+  insider_lookback_days: 180
+  cluster_buy_window_days: 30
+  cluster_buy_threshold: 3
+
+institutional:
+  funds:
+    - { name: "Citadel", cik: "0001423053" }
+    - { name: "Point72", cik: "0001603466" }
+    - { name: "Bridgewater", cik: "0001350694" }
+    - { name: "Tiger Global", cik: "0001167483" }
+    - { name: "Third Point", cik: "0001040273" }
+    - { name: "Berkshire Hathaway", cik: "0001067983" }
+    - { name: "Appaloosa", cik: "0001656456" }
+    - { name: "Baupost", cik: "0001061165" }
+    - { name: "Pershing Square", cik: "0001336528" }
+  multi_fund_open_threshold: 3
+
+earnings_calendar:
+  lookahead_days: 30
+
+logging:
+  log_file: "output/run.log"
+  level: "INFO"
+
+database:
+  path: "cache/meridian.db"
+
+reporting:
+  weekly_commentary_weekday: 4    # 0=Mon, 4=Fri
+  letter_doc_id_prefix: "MCP-IM"
+  tax_rates:
+    short_term: 0.37
+    long_term: 0.20
+
+execution:
+  mode: "paper"                  # "paper" (default) or "live" (requires explicit confirmation)
+  limit_offset: 0.001            # limit = close * (1 ± 0.001) — 10 bps
+  chunk_pct_adv: 0.02            # split orders > 2% of 20d ADV
+  time_in_force_seconds: 120     # cancel limit orders after 120s
+  poll_interval_seconds: 5
+  max_retries: 3                 # cancel + retry up to 3 times on timeout
+  short_check_ttl_days: 7
+  slippage_window_days: 30
+  nav_assumption: 100000000.0    # used to size weight -> shares when paper
+
+risk:
+  # ==== Pre-trade veto (Layer 5 §1) ====
+  pre_trade:
+    earnings_blackout_days: 5    # 5d = 50% size cut, 2d = veto
+    earnings_size_cut: 0.50
+    max_liquidity_pct_adv: 0.05  # position <= 5% of 20d ADV
+    max_position_pct_nav: 0.05
+    max_sector_pct_nav: 0.25
+    max_gross: 1.65              # gross <= 165%
+    min_net: -0.10               # net in [-10%, +15%]
+    max_net: 0.15
+    max_net_beta: 0.20
+    max_pairwise_corr: 0.80      # vs existing position
+  # ==== Circuit breakers (Layer 5 §3) ====
+  circuit_breakers:
+    daily_size_down: 0.015       # > 1.5% daily loss -> SIZE_DOWN 30%
+    daily_close_all: 0.025       # > 2.5% daily loss -> CLOSE_ALL_TODAY
+    weekly_size_down: 0.04       # > 4% weekly loss -> SIZE_DOWN 30%
+    drawdown_kill: 0.08          # > 8% drawdown -> KILL_SWITCH
+    size_down_pct: 0.30          # how much to size down by
+    position_force_close: 0.03   # single position > 3% NAV -> force close
+  # ==== Tail risk (Layer 5 §6) ====
+  tail_risk:
+    vix_warn: 25                 # VIX >= 25 -> REDUCE_GROSS_20%
+    vix_alert: 35                # VIX >= 35 -> REDUCE_GROSS_50%
+    credit_spread_z_warn: 1.0    # credit spread widen z >= 1 -> REDUCE_GROSS_20%
+    credit_spread_series: "BAMLH0A0HYM2"  # FRED series for high-yield OAS
+  # ==== Monitors ====
+  factor_monitor_z_alert: 1.5
+  correlation_monitor_avg_alert: 0.60
+  correlation_window: 60
+  mctr_alert_multiplier: 1.5     # MCTR% > 1.5x weight%
+  # ==== Stress tests (Layer 5 §7) ====
+  stress_scenarios:
+    historical:
+      - { name: "2008 Financial Crisis", start: "2008-09-01", end: "2009-03-31" }
+      - { name: "2020 Covid Crash",      start: "2020-02-20", end: "2020-04-30" }
+      - { name: "2022 Rate Hikes",       start: "2022-01-01", end: "2022-10-31" }
+    synthetic:
+      sector_shock_pct: -0.30          # most-concentrated sector down 30%
+      momentum_top_shock: -0.20        # top quintile down 20%
+      momentum_bot_shock: +0.20        # bottom quintile up 20%
+      short_squeeze_pct: +0.30         # all shorts up 30%
+  factor_cov_lookback: 120
+
+portfolio:
+  num_longs: 20
+  num_shorts: 20
+  gross_target: 1.50            # 150% gross
+  net_target: 0.05              # +5% net (within [0%, +10%] band)
+  max_position: 0.05            # 5% of NAV per name
+  min_position: 0.005           # 0.5% floor
+  max_sector_single_side: 0.25  # 25% per side per sector
+  max_sector_net: 0.05          # |sector_net| <= 5%
+  max_beta: 0.15                # |portfolio beta| <= 0.15
+  turnover_budget: 0.30         # 30% per rebalance
+  mvo_risk_aversion: 1.0
+  optimize_method: "conviction" # "conviction" or "mvo"
+  expected_return_at_top: 0.15  # composite=100 -> +15%/yr
+  expected_return_at_bot: -0.15
+  cov_lookback_days: 120
+  earnings_size_halve_days: 5
+  fomc_2026:
+    - 2026-01-28
+    - 2026-03-18
+    - 2026-04-29
+    - 2026-06-17
+    - 2026-07-29
+    - 2026-09-16
+    - 2026-10-28
+    - 2026-12-09
+  transaction_costs:
+    spread_pct_of_hl: 0.05      # 5% of avg daily H-L range
+    market_impact_coef: 0.10
+    commission_per_share: 0.0   # $0 Alpaca
+
+analysis:
+  model: "claude-sonnet-4-6"
+  cost_ceiling_usd: 25.0
+  cache_ttl_days: 30
+  max_tokens: 4096
+  effort: "medium"           # low | medium | high
+  candidate_count: 20         # 20 long + 20 short
+  prices_per_million:
+    input: 3.0
+    output: 15.0
+    cache_write: 3.75         # 1.25x base input
+    cache_read: 0.30          # 0.1x base input
